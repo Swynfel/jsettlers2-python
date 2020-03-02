@@ -23,13 +23,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import soc.baseclient.SOCDisplaylessPlayerClient;
 import soc.game.*;
 import soc.message.SOCBoardLayout;
 import soc.message.SOCBoardLayout2;
 import soc.message.SOCMessage;
+import soc.message.SOCPlayerElement;
 import soc.message.SOCPlayerElement.PEType;
 import soc.message.SOCPotentialSettlements;
 import soc.server.SOCGameHandler;
+import soc.server.SOCGameListAtServer;
 
 /**
  * Data model for a game saved to/loaded from a file.
@@ -47,6 +50,9 @@ public class SavedGameModel
 {
     /** Current model version: 2300 for v2.3.00 */
     public static int MODEL_VERSION = 2300;
+
+    /** Server's game list, for checking name and creating game */
+    public static SOCGameListAtServer glas;
 
     private transient SOCGame game = null;
 
@@ -85,7 +91,8 @@ public class SavedGameModel
 
     /**
      * Create an empty SavedGameModel to load a game file into.
-     * Once loaded, state will temporarily be {@link SOCGame#LOADING},
+     * Once data is loaded and {@link #createLoadedGame()} is called,
+     * state will temporarily be {@link SOCGame#LOADING}
      * and {@link SOCGame#savedGameModel} will be this SGM.
      * Call {@link #resumePlay(boolean)} to continue play.
      */
@@ -157,6 +164,47 @@ public class SavedGameModel
         game.setGameState(gameState);
 
         return game;
+    }
+
+    /**
+     * Create the {@link SOCGame} and its objects based on data loaded into this SGM.
+     * Game state will be {@link SOCGame#LOADING}.
+     * @throws IllegalStateException if this method's already been called
+     *     or if required static game list field {@link SavedGameModel#glas} is null
+     */
+    /*package*/ void createLoadedGame()
+        throws IllegalStateException
+    {
+        if (game != null)
+            throw new IllegalStateException("already called createLoadedGame");
+        if (glas == null)
+            throw new IllegalStateException("SavedGameModel.glas is null");
+
+        if (glas.isGame(gameName))
+        {
+            // TODO handle name dupe/already exists
+            return;
+        }
+
+        // TODO what if name invalid/some other inconsistency/unable to create? Throw something?
+
+        final SOCGame ga = new SOCGame(gameName, SOCGameOption.parseOptionsToMap(gameOptions));
+        ga.setGameState(SOCGame.LOADING);
+        game = ga;
+        ga.savedGameModel = this;
+        ga.isAtServer = true;
+
+        ga.setCurrentPlayerNumber(currentPlayerNumber);
+        // TODO set other entire-game fields
+        boardInfo.loadInto(ga);
+        for (int pn = 0; pn < ga.maxPlayers; ++pn)
+        {
+            final SOCPlayer pl = ga.getPlayer(pn);
+            final PlayerInfo pinfo = playerSeats[pn];
+            if (! pinfo.isSeatVacant)
+                ga.addPlayer(pinfo.name, pn);
+            pinfo.loadInto(pl);
+        }
     }
 
     /**
@@ -235,6 +283,40 @@ public class SavedGameModel
             pieces.addAll(pl.getPieces());
             fortressPiece = pl.getFortress();
         }
+
+        /**
+         * Load PlayerInfo fields into this SOCPlayer.
+         * If seat isn't vacant, call {@link SOCGame#addPlayer(String, int)} before calling this.
+         */
+        void loadInto(final SOCPlayer pl)
+        {
+            pl.setName(name);
+            // TODO set totalVP/SVP
+            pl.setRobotFlag(isRobot, isBuiltInRobot);
+            pl.setFaceId(faceID);
+            pl.getResources().setAmounts(resources);
+
+            final SOCGame ga = pl.getGame();
+            final int pn = pl.getPlayerNumber();
+            for (final PEType et : elements.keySet())
+                SOCDisplaylessPlayerClient.handlePLAYERELEMENT
+                    (ga, pl, pn, SOCPlayerElement.SET, et, elements.get(et), null);
+
+            // TODO newDevCards, oldDevCards
+
+            final SOCBoard b = ga.getBoard();
+            for (SOCPlayingPiece pp : pieces)
+            {
+                // TODO handle SOCVillage
+                pp.setGameInfo(pl, b);
+                ga.putPiece(pp);
+            }
+            if (fortressPiece != null)
+            {
+                fortressPiece.setGameInfo(pl, b);
+                ga.putPiece(fortressPiece);
+            }
+        }
     }
 
     /**
@@ -282,6 +364,17 @@ public class SavedGameModel
                     ("unexpected boardlayout msg type " + m.getType() + " " + m.getClass().getSimpleName());
 
             playerPotentials = SOCGameHandler.gatherBoardPotentials(ga, Integer.MAX_VALUE);
+        }
+
+        void loadInto(final SOCGame ga)
+        {
+            if (layout2 != null)
+                SOCDisplaylessPlayerClient.handleBOARDLAYOUT2(layout2, ga);
+            else if (layout1 != null)
+                SOCDisplaylessPlayerClient.handleBOARDLAYOUT(layout1, ga);
+
+            for (final SOCPotentialSettlements potenMsg : playerPotentials)
+                SOCDisplaylessPlayerClient.handlePOTENTIALSETTLEMENTS(potenMsg, ga);
         }
     }
 

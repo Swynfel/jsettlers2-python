@@ -632,10 +632,10 @@ public class SOCGame implements Serializable, Cloneable
 
     /**
      * Is this the server's complete copy of the game, not the client's (with some details unknown)?
-     * Set during {@link #startGame()}.
+     * Set during {@link #startGame()}. Treat as read-only.
      * @since 1.1.17
      */
-    boolean isAtServer;
+    public boolean isAtServer;
 
     /**
      * For games at server, a convenient queue to hold any outbound SOCMessages during game actions.

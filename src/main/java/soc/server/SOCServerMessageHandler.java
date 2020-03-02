@@ -1328,12 +1328,15 @@ public class SOCServerMessageHandler
         if (! processDebugCommand_loadSaveGame_checkDir("LOADGAME", c, connGaName))
             return;
 
+        if (SavedGameModel.glas == null)
+            SavedGameModel.glas = srv.gameList;
+
         SavedGameModel sgm = null;
         try
         {
             sgm = GameLoaderJSON.loadGame
                 (new File(srv.savegameDir, argsStr + GameSaverJSON.FILENAME_EXTENSION));
-        } catch(IllegalArgumentException|IOException e) {
+        } catch(IllegalArgumentException|IllegalStateException|IOException e) {
             srv.messageToPlayer
                 (c, connGaName, /*I*/"Problem loading " + argsStr + ": " + e /*18N*/);
             return;
