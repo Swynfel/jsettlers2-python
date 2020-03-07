@@ -2270,7 +2270,7 @@ public class SOCRobotBrain extends Thread
      * clear {@link #waitingForTradeResponse} and {@link #counter}.
      * @since 1.1.09
      */
-    private void tradeStopWaitingClearOffer()
+    protected void tradeStopWaitingClearOffer()
     {
         ///
         /// record which players said no by not saying anything
@@ -2409,7 +2409,7 @@ public class SOCRobotBrain extends Thread
      * @see #buildRequestPlannedPiece()
      * @since 1.1.09
      */
-    private void placeIfExpectPlacing()
+    protected void placeIfExpectPlacing()
     {
         if (waitingForGameState)
             return;
@@ -2620,7 +2620,7 @@ public class SOCRobotBrain extends Thread
      * @see #playKnightCardIfShould()
      * @since 2.0.00
      */
-    private void playKnightCard()
+    protected void playKnightCard()
     {
         expectPLACING_ROBBER = true;
         waitingForGameState = true;
@@ -3024,7 +3024,7 @@ public class SOCRobotBrain extends Thread
      * In general, most tracking is done a bit later in {@link #handlePUTPIECE_updateTrackers(int, int, int)}.
      * @since 1.1.08
      */
-    private void handlePUTPIECE_updateGameData(SOCPutPiece mes)
+    protected void handlePUTPIECE_updateGameData(SOCPutPiece mes)
     {
         switch (mes.getPieceType())
         {
@@ -3069,7 +3069,7 @@ public class SOCRobotBrain extends Thread
      *
      * @since 1.1.08
      */
-    private void handleCANCELBUILDREQUEST(SOCCancelBuildRequest mes)
+    protected void handleCANCELBUILDREQUEST(SOCCancelBuildRequest mes)
     {
         final int gstate = game.getGameState();
         switch (gstate)
@@ -3155,7 +3155,7 @@ public class SOCRobotBrain extends Thread
      * Ignore our own MAKEOFFERs echoed from server.
      * @since 1.1.08
      */
-    private void handleMAKEOFFER(SOCMakeOffer mes)
+    protected void handleMAKEOFFER(SOCMakeOffer mes)
     {
         SOCTradeOffer offer = mes.getOffer();
         game.getPlayer(offer.getFrom()).setCurrentOffer(offer);
@@ -3281,7 +3281,7 @@ public class SOCRobotBrain extends Thread
      * If everyone's rejected our offer, clear {@link #waitingForTradeResponse}.
      * @since 1.1.08
      */
-    private void handleREJECTOFFER(SOCRejectOffer mes)
+    protected void handleREJECTOFFER(SOCRejectOffer mes)
     {
         ///
         /// see if everyone has rejected our offer
@@ -3381,7 +3381,7 @@ public class SOCRobotBrain extends Thread
      * Ignores messages where {@link SOCDevCardAction#getCardTypes()} != {@code null}.
      * @since 1.1.08
      */
-    private void handleDEVCARDACTION(SOCDevCardAction mes)
+    protected void handleDEVCARDACTION(SOCDevCardAction mes)
     {
         if (mes.getCardTypes() != null)
             return;  // <--- ignore: bots don't care about game-end VP card reveals ---
@@ -3429,7 +3429,7 @@ public class SOCRobotBrain extends Thread
      * @param pieceType  Piece type, as in {@link SOCPlayingPiece#SETTLEMENT}
      * @since 1.1.08
      */
-    private void handlePUTPIECE_updateTrackers(final int pn, final int coord, final int pieceType)
+    protected void handlePUTPIECE_updateTrackers(final int pn, final int coord, final int pieceType)
     {
         switch (pieceType)
         {
@@ -3703,7 +3703,7 @@ public class SOCRobotBrain extends Thread
      * See {@link #handlePLAYERELEMENT(SOCPlayer, int, int, int, int)} for actions taken.
      * @since 2.0.00
      */
-    private void handlePLAYERELEMENTS(SOCPlayerElements mes)
+    protected void handlePLAYERELEMENTS(SOCPlayerElements mes)
     {
         final int pn = mes.getPlayerNumber();
         final SOCPlayer pl = (pn != -1) ? game.getPlayer(pn) : null;
@@ -3719,7 +3719,7 @@ public class SOCRobotBrain extends Thread
      * See {@link #handlePLAYERELEMENT(SOCPlayer, int, int, int, int)} for actions taken.
      * @since 1.1.08
      */
-    private void handlePLAYERELEMENT(SOCPlayerElement mes)
+    protected void handlePLAYERELEMENT(SOCPlayerElement mes)
     {
         final int pn = mes.getPlayerNumber();
         final int action = mes.getAction(), amount = mes.getAmount();
@@ -3750,7 +3750,7 @@ public class SOCRobotBrain extends Thread
      * @param amount  The new value to set, or the delta to gain/lose
      * @since 2.0.00
      */
-    private void handlePLAYERELEMENT
+    protected void handlePLAYERELEMENT
         (SOCPlayer pl, final int pn, final int action, final int etype, final int amount)
     {
         if ((pl == null) && (pn != -1))
@@ -5374,7 +5374,7 @@ public class SOCRobotBrain extends Thread
      * For each player in game:
      * client.sendText, and debug-print to console, game.getPlayer(i).getResources()
      */
-    private void printResources()
+    protected void printResources()
     {
         if (D.ebugOn)
         {
