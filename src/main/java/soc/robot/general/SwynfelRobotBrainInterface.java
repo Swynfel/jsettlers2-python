@@ -37,9 +37,10 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 	private SOCRobotParameters robotParameters;
 
 	public void setOurPlayerData() {
+		ourPlayerData = game.getPlayer(client.getNickname());
+		utils = new Utils(client.format, ourPlayerData, game);
 		super.setOurPlayerData();
 		ourPlayerData.setFaceId(-2);
-		utils = new Utils(client.format, ourPlayerData, game);
 	}
 
 	protected abstract void setStrategyFields();
@@ -992,6 +993,7 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 					}
 				}
 			}
+			finished();
 		}
 		else
 		{

@@ -102,7 +102,7 @@ public class Format {
         faceActions = faceActionMultiplicity * faceCount;
         edgeActionMultiplicity = 1;
         edgeActions = edgeActionMultiplicity * edgeCount;
-        vertexActionMultiplicity = 1;
+        vertexActionMultiplicity = 2;
         vertexActions = vertexActionMultiplicity * vertexCount;
         extraActions = 21;
         totalActions = passActions + faceActions + edgeActions + vertexActions + extraActions;

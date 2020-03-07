@@ -322,7 +322,7 @@ public class Utils {
 			index += format.edgeActions;
 		}
 
-		//Possible Settlements/Cities
+		//Possible Settlements + Cities
 		
 		boolean canPlaceSettlement = player.getNumPieces(SOCPlayingPiece.SETTLEMENT) > 0 &&
 				player.getResources().contains(SOCPlayingPiece.getResourcesToBuild(SOCPlayingPiece.SETTLEMENT));
@@ -339,9 +339,11 @@ public class Utils {
 				}
 			}
 			for(int node : format.vertices) {
-				boolean canPlace = (canPlaceSettlement && player.canPlaceSettlement(node))
-									|| (canPlaceCity && currentSettlements.contains(node));
-				actions[index] = canPlace;
+				// Settlement
+				actions[index] = canPlaceSettlement && player.canPlaceSettlement(node);
+				index++;
+				// City
+				actions[index] = canPlaceCity && currentSettlements.contains(node);
 				index++;
 			}
 		} else {
@@ -411,7 +413,11 @@ public class Utils {
 		final int[] ourPotentialSettlements = player.getPotentialSettlements_arr();
 		for(int node : format.vertices) {
 			boolean canPlace = Arrays.stream(ourPotentialSettlements).anyMatch(x -> x == node);
+			// Settlement
 			actions[index] = canPlace;
+			index++;
+			// City
+			actions[index] = false;
 			index++;
 		}
 		return actions;
@@ -467,11 +473,11 @@ public class Utils {
 			}
 			id -= format.edgeActions;
 
-			//If Settlement/City action
+			//If Settlement + City action
 			if(id < format.vertexActions) {
-				int position = format.vertices[id];
-				parameters = new int[] { position }; // Settlement position
-				type = board.settlementAtNode(position) == null ? BUILD_SETTLEMENT : BUILD_CITY;
+				int position = format.vertices[id / 2];
+				parameters = new int[] { position }; // Settlement/City position
+				type = (id % 2 == 0) ? BUILD_SETTLEMENT : BUILD_CITY;
 				return;
 			}
 			id -= format.vertexActions;
