@@ -168,6 +168,26 @@ task fullJar(type: Jar) {
     }
 }
 
+
+task pythonJar(type: Jar) {
+    archiveBaseName.set("JSettlersPython")
+    archiveVersion.set("0.0.0")
+    manifest {
+        attributes(
+            'Main-Class': 'soc.robot.python.PythonRobotClient',
+            'Implementation-Version': archiveVersion,
+            'Build-Revision': project.git_revision,
+        )
+    }
+    from(sourceSets.main.output) {
+        include "net/nand/util/i18n/mgr/**"
+        include "soc/**"
+    }
+    from(sourceSets.main.resources) {
+        include "resources/**"
+    }
+}
+
 // PropertiesTranslatorEditor utility; not built by default
 task i18neditorJar(type: Jar) {
     baseName = 'PTE'
@@ -330,7 +350,7 @@ clean {
 }
 
 artifacts {
-    archives serverJar, fullJar
+    archives serverJar, fullJar, pythonJar
 }
 
 /*
