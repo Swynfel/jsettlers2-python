@@ -40,62 +40,7 @@ import java.util.Vector;
 
 import soc.debug.D;
 import soc.game.*;
-import soc.message.SOCAcceptOffer;  // for javadocs only
-import soc.message.SOCBankTrade;
-import soc.message.SOCBoardLayout;
-import soc.message.SOCBoardLayout2;
-import soc.message.SOCBotJoinGameRequest;
-import soc.message.SOCCancelBuildRequest;
-import soc.message.SOCChangeFace;
-import soc.message.SOCChoosePlayerRequest;
-import soc.message.SOCClearOffer;
-import soc.message.SOCDebugFreePlace;
-import soc.message.SOCDevCardAction;
-import soc.message.SOCDevCardCount;
-import soc.message.SOCDiceResult;
-import soc.message.SOCDiscard;
-import soc.message.SOCDiscardRequest;
-import soc.message.SOCFirstPlayer;
-import soc.message.SOCGameElements;
-import soc.message.SOCGameMembers;
-import soc.message.SOCGameServerText;
-import soc.message.SOCGameState;
-import soc.message.SOCGameStats;
-import soc.message.SOCGameTextMsg;
-import soc.message.SOCInventoryItemAction;
-import soc.message.SOCJoinGame;
-import soc.message.SOCJoinGameAuth;
-import soc.message.SOCKeyedMessage;
-import soc.message.SOCLocalizedStrings;
-import soc.message.SOCLargestArmy;
-import soc.message.SOCLastSettlement;
-import soc.message.SOCLeaveGame;
-import soc.message.SOCLongestRoad;
-import soc.message.SOCMessage;
-import soc.message.SOCMovePiece;
-import soc.message.SOCMoveRobber;
-import soc.message.SOCPieceValue;
-import soc.message.SOCPlayerElement;
-import soc.message.SOCPlayerElements;
-import soc.message.SOCPlayerStats;
-import soc.message.SOCPotentialSettlements;
-import soc.message.SOCPutPiece;
-import soc.message.SOCResetBoardReject;
-import soc.message.SOCRevealFogHex;
-import soc.message.SOCRollDice;
-import soc.message.SOCRollDicePrompt;
-import soc.message.SOCSVPTextMessage;
-import soc.message.SOCScenarioInfo;
-import soc.message.SOCSetPlayedDevCard;
-import soc.message.SOCSetSeatLock;
-import soc.message.SOCSetSpecialItem;
-import soc.message.SOCSetTurn;
-import soc.message.SOCSimpleAction;
-import soc.message.SOCSimpleRequest;
-import soc.message.SOCSitDown;
-import soc.message.SOCStartGame;
-import soc.message.SOCStatusMessage;
-import soc.message.SOCTurn;
+import soc.message.*;
 import soc.server.genericServer.Connection;
 import soc.util.IntPair;
 import soc.util.SOCFeatureSet;
@@ -671,6 +616,7 @@ public class SOCGameHandler extends GameHandler
         }
         srv.gameList.releaseMonitorForGame(gname);
 
+        sendBankResources(srv, ga);
         /**
          * send new state number; if game is now OVER,
          * also send end-of-game messages.
@@ -869,6 +815,8 @@ public class SOCGameHandler extends GameHandler
             sendTurn(ga, false);
             return true;  // <--- Early return ---
         }
+
+        sendBankResources(srv, ga);
 
         /**
          * If the turn can now end, proceed as if player requested it.
@@ -1501,6 +1449,8 @@ public class SOCGameHandler extends GameHandler
                 + DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date()));
 
         //messageToGame(gameName, new SOCGameServerText(gameName, SERVERNAME, n+" joined the game"));
+
+        sendBankResources(srv, gameData);
         /**
          * Let everyone else know about the change
          */
@@ -2795,7 +2745,7 @@ public class SOCGameHandler extends GameHandler
             if (isNews)
                 isNews = false;
         }
-
+        sendBankResources(srv, srv.getGame(gaName));
         srv.gameList.releaseMonitorForGame(gaName);
     }
 
@@ -3089,6 +3039,7 @@ public class SOCGameHandler extends GameHandler
         else
             srv.messageToGame(gname, new SOCSetPlayedDevCard(gname, cpn, false));
 
+        SOCGameHandler.sendBankResources(srv, ga);
         final SOCTurn turnMessage = new SOCTurn(gname, cpn, (useGSField) ? gs : 0);
         srv.messageToGame(gname, turnMessage);
         srv.recordGameEvent(gname, turnMessage);
@@ -4032,4 +3983,14 @@ public class SOCGameHandler extends GameHandler
             srv.gameList.releaseMonitorForGame(gaName);
     }
 
+    public static void sendBankResources(SOCServer srv, SOCGame ga) {
+        for (SOCPlayer p : ga.getPlayers())
+        {
+            SOCMessage msg = SOCBankResources.from(ga);
+            final Connection c = srv.getConnection(p.getName());
+            if (c != null) {
+                c.put(msg);
+            }
+        }
+    }
 }

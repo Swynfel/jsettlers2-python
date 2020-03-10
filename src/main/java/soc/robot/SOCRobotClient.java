@@ -737,6 +737,7 @@ public class SOCRobotClient extends SOCDisplaylessPlayerClient
             case SOCMessage.DICERESULT:
             case SOCMessage.DISCARDREQUEST:
             case SOCMessage.BANKTRADE:
+            case SOCMessage.BANKRESOURCES:
             case SOCMessage.MAKEOFFER:
             case SOCMessage.MOVEPIECE:   // move a previously placed ship; will update game data and player trackers
             case SOCMessage.MOVEROBBER:

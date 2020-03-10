@@ -388,6 +388,8 @@ public class SOCGameMessageHandler
                  */
                 SOCGame.RollResult roll = ga.rollDice();
 
+                SOCGameHandler.sendBankResources(srv, ga);
+
                 /**
                  * Send roll results and then text to client.
                  * Note that only the total is sent, not the 2 individual dice.

@@ -17,20 +17,10 @@ public class PythonOpeningBuildStrategy extends OpeningBuildStrategy {
     }
 
     private int pickSettlement() {
-        utils.newState(utils.encodePossibleSettlementOpeningActions(game, ourPlayerData));
+        utils.newState();
+        utils.initialSettlementActions();
 
-        boolean[] possibleActions = utils.getActions();
-        int actionId = pythonBrain.chooseAction(possibleActions);
-        if(!possibleActions[actionId]) {
-            int k = 0;
-            while(!possibleActions[k]) {
-                k++;
-            }
-            System.out.print("ERROR, picked action " + actionId +" that isn't legal, replaced by first valid action (" + k + ")");
-            actionId = k;
-        }
-
-        Utils.SOCAction action = new Utils.SOCAction(utils.format, game.getBoard(), actionId);
+        Utils.SOCAction action = pythonBrain.chooseAction();
 
         return action.parameters[0];
     }
@@ -53,20 +43,10 @@ public class PythonOpeningBuildStrategy extends OpeningBuildStrategy {
 
     @Override
     public int planInitRoad() {
-        utils.newState(utils.encodePossibleRoadOpeningActions(game, ourPlayerData));
+        utils.newState();
+        utils.initialRoadActions();
 
-        boolean[] possibleActions = utils.getActions();
-        int actionId = pythonBrain.chooseAction(possibleActions);
-        if(!possibleActions[actionId]) {
-            int k = 0;
-            while(!possibleActions[k]) {
-                k++;
-            }
-            System.out.print("ERROR, picked action " + actionId +" that isn't legal, replaced by first valid action (" + k + ")");
-            actionId = k;
-        }
-
-        Utils.SOCAction action = new Utils.SOCAction(utils.format, game.getBoard(), actionId);
+        Utils.SOCAction action = pythonBrain.chooseAction();
 
         return action.parameters[0];
     }

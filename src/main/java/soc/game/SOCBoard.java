@@ -581,7 +581,7 @@ public abstract class SOCBoard implements Serializable, Cloneable
      * @see SOCBoard6p#HEXCOORDS_LAND_V2
      * @see #getLandHexCoords()
      */
-    private int[] numToHexID =
+    public static int[] numToHexID =
     {
         0x17, 0x39, 0x5B, 0x7D,
         0x15, 0x37, 0x59, 0x7B, 0x9D,

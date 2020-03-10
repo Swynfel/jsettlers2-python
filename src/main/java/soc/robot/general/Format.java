@@ -1,6 +1,9 @@
 package soc.robot.general;
 
+import soc.game.SOCBoard;
 import soc.robot.general.SwynfelRobotClientInterface;
+
+import java.util.stream.Stream;
 
 import static soc.game.SOCBoard.*;
 
@@ -17,7 +20,7 @@ public class Format {
         }
     }
 
-    public int[] faces, edges, vertices;
+    public int[] faces, facesCoords, edges, vertices;
     boolean includeStatic;
     int faceCount, edgeCount, vertexCount;
 
@@ -33,6 +36,13 @@ public class Format {
     int edgeActions, edgeActionMultiplicity;
     int vertexActions, vertexActionMultiplicity;
     int extraActions;
+
+    // TODO: Read from file
+    public int half_height = 7;
+    public int height = 2 * half_height + 1;
+    public int half_width = 12;
+    public int width = 2 * half_width + 1;
+    public int players = 2;
 
     public static final String HEADER = "state.";
 
@@ -67,6 +77,10 @@ public class Format {
         includeStatic = qOptions.includeStatic;
 
         faces = qOptions.faces;
+        facesCoords = new int[faces.length];
+        for(int i = 0; i < faces.length; i++) {
+            facesCoords[i] = SOCBoard.numToHexID[faces[i]];
+        }
         edges = qOptions.edges;
         vertices = qOptions.vertices;
 
@@ -97,16 +111,34 @@ public class Format {
             + (xWhoLargestArmy ? 1 : 0);
         totalStates = faceStates + edgeStates + vertexStates + extraStates;
 
-        passActions = 1;
-        faceActionMultiplicity = 0;
+        faceActionMultiplicity = players;
         faceActions = faceActionMultiplicity * faceCount;
         edgeActionMultiplicity = 1;
         edgeActions = edgeActionMultiplicity * edgeCount;
         vertexActionMultiplicity = 2;
         vertexActions = vertexActionMultiplicity * vertexCount;
-        extraActions = 21;
+        extraActions = 36;
         totalActions = passActions + faceActions + edgeActions + vertexActions + extraActions;
     }
+
+    public static class Coord {
+        public int x;
+        public int y;
+
+        public Coord(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public Coord with(Format format) {
+            return new Coord(x + format.half_width, y + format.half_height);
+        }
+    }
+
+    public static final Coord[] HEXES = { new Coord(-4,-4), new Coord(0,-4), new Coord(4,-4), new Coord(-6,-2), new Coord(-2,-2), new Coord(2,-2), new Coord(6,-2), new Coord(-8,0), new Coord(-4,0), new Coord(0,0), new Coord(4,0), new Coord(8,0), new Coord(-6,2), new Coord(-2,2), new Coord(2,2), new Coord(6,2), new Coord(-4,4), new Coord(0,4), new Coord(4,4) };
+    public static final Coord[] PATHS = { new Coord(-5,-5), new Coord(-3,-5), new Coord(-1,-5), new Coord(1,-5), new Coord(3,-5), new Coord(5,-5), new Coord(-6,-4), new Coord(-2,-4), new Coord(2,-4), new Coord(6,-4), new Coord(-7,-3), new Coord(-5,-3), new Coord(-3,-3), new Coord(-1,-3), new Coord(1,-3), new Coord(3,-3), new Coord(5,-3), new Coord(7,-3), new Coord(-8,-2), new Coord(-4,-2), new Coord(0,-2), new Coord(4,-2), new Coord(8,-2), new Coord(-9,-1), new Coord(-7,-1), new Coord(-5,-1), new Coord(-3,-1), new Coord(-1,-1), new Coord(1,-1), new Coord(3,-1), new Coord(5,-1), new Coord(7,-1), new Coord(9,-1), new Coord(-10,0), new Coord(-6,0), new Coord(-2,0), new Coord(2,0), new Coord(6,0), new Coord(10,0), new Coord(-9,1), new Coord(-7,1), new Coord(-5,1), new Coord(-3,1), new Coord(-1,1), new Coord(1,1), new Coord(3,1), new Coord(5,1), new Coord(7,1), new Coord(9,1), new Coord(-8,2), new Coord(-4,2), new Coord(0,2), new Coord(4,2), new Coord(8,2), new Coord(-7,3), new Coord(-5,3), new Coord(-3,3), new Coord(-1,3), new Coord(1,3), new Coord(3,3), new Coord(5,3), new Coord(7,3), new Coord(-6,4), new Coord(-2,4), new Coord(2,4), new Coord(6,4), new Coord(-5,5), new Coord(-3,5), new Coord(-1,5), new Coord(1,5), new Coord(3,5), new Coord(5,5) };
+    public static final Coord[] INTERSECTIONS = { new Coord(-6,-5), new Coord(-4,-5), new Coord(-2,-5), new Coord(0,-5), new Coord(2,-5), new Coord(4,-5), new Coord(6,-5), new Coord(-8,-3), new Coord(-6,-3), new Coord(-4,-3), new Coord(-2,-3), new Coord(0,-3), new Coord(2,-3), new Coord(4,-3), new Coord(6,-3), new Coord(8,-3), new Coord(-10,-1), new Coord(-8,-1), new Coord(-6,-1), new Coord(-4,-1), new Coord(-2,-1), new Coord(0,-1), new Coord(2,-1), new Coord(4,-1), new Coord(6,-1), new Coord(8,-1), new Coord(10,-1), new Coord(-10,1), new Coord(-8,1), new Coord(-6,1), new Coord(-4,1), new Coord(-2,1), new Coord(0,1), new Coord(2,1), new Coord(4,1), new Coord(6,1), new Coord(8,1), new Coord(10,1), new Coord(-8,3), new Coord(-6,3), new Coord(-4,3), new Coord(-2,3), new Coord(0,3), new Coord(2,3), new Coord(4,3), new Coord(6,3), new Coord(8,3), new Coord(-6,5), new Coord(-4,5), new Coord(-2,5), new Coord(0,5), new Coord(2,5), new Coord(4,5), new Coord(6,5) };
+
 
     private static final int[] FACES_REGULAR = {16, 10, 5,  // Look at SOCBoard.numToHexID for actual ids
                                               23, 17, 11, 6,

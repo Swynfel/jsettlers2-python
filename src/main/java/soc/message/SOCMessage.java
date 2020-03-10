@@ -395,6 +395,8 @@ public abstract class SOCMessage implements Serializable, Cloneable
     public static final int SCENARIOINFO = 1101;    // Scenario info, 20150920, v2.0.00
 
 
+    public static final int BANKRESOURCES = 1200;  // Swynfel Special
+
     /////////////////////////////////////////
     // REQUEST FOR FUTURE MESSAGE NUMBERS: //
     /////////////////////////////////////////
@@ -947,6 +949,9 @@ public abstract class SOCMessage implements Serializable, Cloneable
 
             case SCENARIOINFO:         // Scenario info, 20150920, v2.0.00
                 return SOCScenarioInfo.parseDataStr(multiData, data);
+
+            case BANKRESOURCES:
+                return SOCBankResources.parseDataStr(data);
 
             // gametype-specific messages:
 

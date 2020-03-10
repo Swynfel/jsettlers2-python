@@ -38,15 +38,15 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 
 	public void setOurPlayerData() {
 		ourPlayerData = game.getPlayer(client.getNickname());
-		utils = new Utils(client.format, ourPlayerData, game);
+		utils = new Utils(this, client.format, ourPlayerData, game);
 		super.setOurPlayerData();
 		ourPlayerData.setFaceId(-2);
 	}
 
 	protected abstract void setStrategyFields();
 
-	// Simple copy of SOCRobotBrain's run
-	// Swynfel TODO: Adds functions in original run and override those functions
+	// Simple copy of SOCRobotBrain's run, with slight modifications in the middle
+	// Swynfel TODO: Add functions in original run and override those functions
 	@Override
 	public void run()
 	{
@@ -71,7 +71,6 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 				try
 				{
 					final SOCMessage mes = gameEventQ.get();  // Sleeps until message received
-
 					final int mesType;
 					if (mes != null)
 					{
@@ -87,6 +86,10 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 					else
 					{
 						mesType = -1;
+					}
+					if (mesType == SOCMessage.BANKRESOURCES) {
+						utils.handleBankResources((SOCBankResources) mes);
+						continue;
 					}
 
 					if (waitingForTradeMsg && (counter > 10))
@@ -426,128 +429,80 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 
 					if ((game.getGameState() == SOCGame.ROLL_OR_CARD) && ! waitingForGameState)
 					{
+						// TODO: Use "play-like" function
 						rollOrPlayKnightOrExpectDice();
-
-						// On our turn, ask client to roll dice or play a knight;
-						// on other turns, update flags to expect dice result.
-						// Clears expectROLL_OR_CARD to false.
-						// Sets either expectDICERESULT, or expectPLACING_ROBBER and waitingForGameState.
 					}
 
-					if (ourTurn && (game.getGameState() == SOCGame.WAITING_FOR_ROBBER_OR_PIRATE) && ! waitingForGameState)
-					{
-						// TODO handle moving the pirate too
-						// For now, always decide to move the robber.
-						// Once we move the robber, will also need to deal with state WAITING_FOR_ROB_CLOTH_OR_RESOURCE.
-						expectPLACING_ROBBER = true;
-						waitingForGameState = true;
-						counter = 0;
-						client.choosePlayer(game, SOCChoosePlayer.CHOICE_MOVE_ROBBER);
-						pause(200);
-					}
-
-					else if ((game.getGameState() == SOCGame.PLACING_ROBBER) && ! waitingForGameState)
-					{
-						expectPLACING_ROBBER = false;
-
-						if ((! waitingForOurTurn) && ourTurn)
-						{
-							if (! ((expectROLL_OR_CARD || expectPLAY1) && (counter < 4000)))
-							{
-								if (moveRobberOnSeven)
-								{
-									// robber moved because 7 rolled on dice
-									moveRobberOnSeven = false;
+					if (!waitingForGameState) {
+						switch (game.getGameState()) {
+							case SOCGame.WAITING_FOR_ROBBER_OR_PIRATE:
+								if (ourTurn) {
+									expectPLACING_ROBBER = true;
 									waitingForGameState = true;
 									counter = 0;
-									expectPLAY1 = true;
+									client.choosePlayer(game, SOCChoosePlayer.CHOICE_MOVE_ROBBER);
+									pause(200);
 								}
-								else
-								{
-									waitingForGameState = true;
-									counter = 0;
-
-									if (oldGameState == SOCGame.ROLL_OR_CARD)
-									{
-										// robber moved from playing knight card before dice roll
-										expectROLL_OR_CARD = true;
-									}
-									else if (oldGameState == SOCGame.PLAY1)
-									{
-										// robber moved from playing knight card after dice roll
+								break;
+							case SOCGame.PLACING_ROBBER:
+								expectPLACING_ROBBER = false;
+								if ((!waitingForOurTurn) && ourTurn && !((expectROLL_OR_CARD || expectPLAY1) && (counter < 4000))) {
+									if (moveRobberOnSeven) {
+										// robber moved because 7 rolled on dice
+										moveRobberOnSeven = false;
+										waitingForGameState = true;
 										expectPLAY1 = true;
+									} else {
+										waitingForGameState = true;
+
+										if (oldGameState == SOCGame.ROLL_OR_CARD) {
+											// robber moved from playing knight card before dice roll
+											expectROLL_OR_CARD = true;
+										} else if (oldGameState == SOCGame.PLAY1) {
+											// robber moved from playing knight card after dice roll
+											expectPLAY1 = true;
+										}
 									}
+
+									counter = 0;
+									moveRobber();
 								}
-
-								counter = 0;
-								moveRobber();
-							}
+								break;
+							case SOCGame.WAITING_FOR_DISCOVERY:
+								expectWAITING_FOR_DISCOVERY = false;
+								if ((!waitingForOurTurn) && ourTurn && !(expectPLAY1) && (counter < 4000)) {
+									waitingForGameState = true;
+									expectPLAY1 = true;
+									counter = 0;
+									client.pickResources(game, resourceChoices);
+									pause(1500);
+								}
+								break;
+							case SOCGame.WAITING_FOR_MONOPOLY:
+								expectWAITING_FOR_MONOPOLY = false;
+								if ((! waitingForOurTurn) && ourTurn && !(expectPLAY1) && (counter < 4000)) {
+									waitingForGameState = true;
+									expectPLAY1 = true;
+									counter = 0;
+									client.pickResourceType(game, monopolyChoice);
+									pause(1500);
+								}
 						}
-					}
-
-					if ((game.getGameState() == SOCGame.WAITING_FOR_DISCOVERY) && ! waitingForGameState)
-					{
-						expectWAITING_FOR_DISCOVERY = false;
-
-						if ((! waitingForOurTurn) && ourTurn)
-						{
-							if (! (expectPLAY1) && (counter < 4000))
-							{
-								waitingForGameState = true;
-								expectPLAY1 = true;
-								counter = 0;
-								client.pickResources(game, resourceChoices);
-								pause(1500);
-							}
-						}
-					}
-
-					if ((game.getGameState() == SOCGame.WAITING_FOR_MONOPOLY) && ! waitingForGameState)
-					{
-						expectWAITING_FOR_MONOPOLY = false;
-
-						if ((! waitingForOurTurn) && ourTurn)
-						{
-							if (!(expectPLAY1) && (counter < 4000))
-							{
-								waitingForGameState = true;
-								expectPLAY1 = true;
-								counter = 0;
-								client.pickResourceType(game, monopolyStrategy.getMonopolyChoice());
-								pause(1500);
-							}
-						}
-					}
-
-					if (ourTurn && (! waitingForOurTurn)
-							&& (game.getGameState() == SOCGame.PLACING_INV_ITEM) && (! waitingForGameState))
-					{
-						planAndPlaceInvItem();  // choose and send a placement location
 					}
 
 					if (waitingForTradeMsg && (mesType == SOCMessage.BANKTRADE)
-							&& (((SOCBankTrade) mes).getPlayerNumber() == ourPlayerNumber))
-					{
-						//
+							&& (((SOCBankTrade) mes).getPlayerNumber() == ourPlayerNumber)) {
 						// This is the bank/port trade confirmation announcement we've been waiting for
-						//
 						waitingForTradeMsg = false;
 					}
 
 					if (waitingForDevCard && (mesType == SOCMessage.SIMPLEACTION)
 							&& (((SOCSimpleAction) mes).getPlayerNumber() == ourPlayerNumber)
-							&& (((SOCSimpleAction) mes).getActionType() == SOCSimpleAction.DEVCARD_BOUGHT))
-					{
-						//
+							&& (((SOCSimpleAction) mes).getActionType() == SOCSimpleAction.DEVCARD_BOUGHT)) {
 						// This is the "dev card bought" message we've been waiting for
-						//
 						waitingForDevCard = false;
 					}
 
-					/**
-					 * Planning: If our turn and not waiting for something,
-					 * it's time to decide to build or take other normal actions.
-					 */
 					if (((game.getGameState() == SOCGame.PLAY1) || (game.getGameState() == SOCGame.SPECIAL_BUILDING))
 							&& ! (waitingForGameState || waitingForTradeMsg || waitingForTradeResponse || waitingForDevCard
 							|| expectPLACING_ROAD || expectPLACING_SETTLEMENT || expectPLACING_CITY
@@ -557,212 +512,18 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 					{
 						expectPLAY1 = false;
 
-						// 6-player: check Special Building Phase
-						// during other players' turns.
-						if ((! ourTurn) && waitingForOurTurn && gameIs6Player
-								&& (! decidedIfSpecialBuild) && (! expectPLACING_ROBBER))
-						{
-							decidedIfSpecialBuild = true;
+						if ((! waitingForOurTurn) && ourTurn && !(expectROLL_OR_CARD && (counter < 4000))) {
+							counter = 0;
 
-							/**
-							 * It's not our turn.  We're not doing anything else right now.
-							 * Gamestate has passed ROLL_OR_CARD, so we know what resources to expect.
-							 * Do we want to Special Build?  Check the same conditions as during our turn.
-							 * Make a plan if we don't have one,
-							 * and if we haven't given up building attempts this turn.
-							 */
-
-							if (buildingPlan.empty() && (ourPlayerData.getResources().getTotal() > 1)
-									&& (failedBuildingAttempts < MAX_DENIED_BUILDING_PER_TURN))
-							{
-								planBuilding();
-
-                                    /*
-                                     * planBuilding takes these actions, sets buildingPlan and other fields
-                                     * (see its javadoc):
-                                     *
-                                    decisionMaker.planStuff(robotParameters.getStrategyType());
-
-                                    if (! buildingPlan.empty())
-                                    {
-                                        lastTarget = (SOCPossiblePiece) buildingPlan.peek();
-                                        negotiator.setTargetPiece(ourPlayerNumber, buildingPlan.peek());
-                                    }
-                                     */
-
-								if ( ! buildingPlan.empty())
-								{
-									// If we have the resources right now, ask to Special Build
-
-									final SOCPossiblePiece targetPiece = buildingPlan.peek();
-									final SOCResourceSet targetResources = targetPiece.getResourcesToBuild();
-									// may be null
-
-									if ((ourPlayerData.getResources().contains(targetResources)))
-									{
-										// Ask server for the Special Building Phase.
-										// (TODO) if FAST_STRATEGY: Maybe randomly don't ask, to lower opponent difficulty?
-										waitingForSpecialBuild = true;
-										client.buildRequest(game, -1);
-										pause(100);
-									}
-								}
-							}
-						}
-
-						if ((! waitingForOurTurn) && ourTurn)
-						{
-							if (! (expectROLL_OR_CARD && (counter < 4000)))
-							{
-								counter = 0;
-
-								//D.ebugPrintln("DOING PLAY1");
-								if (D.ebugOn)
-								{
-									client.sendText(game, "================================");
-
-									// for each player in game:
-									//    sendText and debug-prn game.getPlayer(i).getResources()
-									printResources();
-								}
-
-								/* Swynfel : Not using this original code, ask our agent instead
-
-								 * if we haven't played a dev card yet,
-								 * and we have a knight, and we can get
-								 * largest army, play the knight.
-								 * If we're in SPECIAL_BUILDING (not PLAY1),
-								 * can't trade or play development cards.
-								 *
-								 * In scenario _SC_PIRI (which has no robber and
-								 * no largest army), play one whenever we have
-								 * it, someone else has resources, and we can
-								 * convert a ship to a warship.
-
-								if ((game.getGameState() == SOCGame.PLAY1) && ! ourPlayerData.hasPlayedDevCard())
-								{
-									playKnightCardIfShould();  // might set expectPLACING_ROBBER and waitingForGameState
-								}
-
-								 *
-								 * make a plan if we don't have one,
-								 * and if we haven't given up building
-								 * attempts this turn.
-								 *
-								if ( (! expectPLACING_ROBBER) && buildingPlan.empty()
-										&& (ourPlayerData.getResources().getTotal() > 1)
-										&& (failedBuildingAttempts < MAX_DENIED_BUILDING_PER_TURN))
-								{
-									planBuilding();
-
-                                        /*
-                                         * planBuilding takes these actions, sets buildingPlan and other fields
-                                         * (see its javadoc):
-                                         *
-                                        decisionMaker.planStuff(robotParameters.getStrategyType());
-
-                                        if (! buildingPlan.empty())
-                                        {
-                                            lastTarget = (SOCPossiblePiece) buildingPlan.peek();
-                                            negotiator.setTargetPiece(ourPlayerNumber, buildingPlan.peek());
-                                        }
-
-								}
-
-								//D.ebugPrintln("DONE PLANNING");
-								if ( (! expectPLACING_ROBBER) && (! buildingPlan.empty()))
-								{
-									// Time to build something.
-
-									// Either ask to build a piece, or use trading or development
-									// cards to get resources to build it.  See javadoc for flags set
-									// (expectPLACING_ROAD, etc).  In a future iteration of the run loop
-									// with the expected PLACING_ state, we'll build whatWeWantToBuild
-									// in placeIfExpectPlacing().
-
-									buildOrGetResourceByTradeOrCard();
-								}
-								*/
-
-								if (!expectPLACING_ROBBER) {
-									// Swynfel: Our real turn
-									playMsg();
-									play();
-								}
-
-								/**
-								 * see if we're done with our turn
-								 */
-								if (! (expectPLACING_SETTLEMENT || expectPLACING_FREE_ROAD1 || expectPLACING_FREE_ROAD2
-										|| expectPLACING_ROAD || expectPLACING_CITY || expectPLACING_SHIP
-										|| expectWAITING_FOR_DISCOVERY || expectWAITING_FOR_MONOPOLY
-										|| expectPLACING_ROBBER || waitingForTradeMsg || waitingForTradeResponse
-										|| waitingForDevCard
-										|| waitingForGameState
-										|| (waitingForPickSpecialItem != null)))
-								{
-									// Any last things for turn from game's scenario?
-									boolean scenActionTaken = false;
-									if (game.isGameOptionSet(SOCGameOption.K_SC_FTRI)
-											|| game.isGameOptionSet(SOCGameOption.K_SC_PIRI))
-									{
-										// possibly attack pirate fortress
-										// or place a gift port for better bank trades
-										scenActionTaken = considerScenarioTurnFinalActions();
-									}
-
-									if (! scenActionTaken)
-									{
-										resetFieldsAtEndTurn();
-                                            /*
-                                             * These state fields are reset:
-                                             *
-                                            waitingForGameState = true;
-                                            counter = 0;
-                                            expectROLL_OR_CARD = true;
-                                            waitingForOurTurn = true;
-
-                                            doneTrading = (robotParameters.getTradeFlag() != 1);
-
-                                            //D.ebugPrintln("!!! ENDING TURN !!!");
-                                            negotiator.resetIsSelling();
-                                            negotiator.resetOffersMade();
-                                            buildingPlan.clear();
-                                            negotiator.resetTargetPieces();
-                                             */
-
-										pause(1500);
-										client.endTurn(game);
-									}
-								}
-							}
+							////////////////////////////////////////////////////////////////////////////////////////////
+							// Swynfel: Our real turn                                                                 //
+							////////////////////////////////////////////////////////////////////////////////////////////
+							playMsg();
+							play();
 						}
 					}
 
-					/**
-					 * Placement: Make various putPiece calls; server has told us it's OK to buy them.
-					 * Call client.putPiece.
-					 * Works when it's our turn and we have an expect flag set
-					 * (such as expectPLACING_SETTLEMENT, in these game states:
-					 * START1A - START2B or - START3B
-					 * PLACING_SETTLEMENT, PLACING_ROAD, PLACING_CITY
-					 * PLACING_FREE_ROAD1, PLACING_FREE_ROAD2
-					 */
-					if (! waitingForGameState)
-					{
-						placeIfExpectPlacing();
-					}
-
-					/**
-					 * End of various putPiece placement calls.
-					 */
-
-                    /*
-                       if (game.getGameState() == SOCGame.OVER) {
-                       client.leaveGame(game);
-                       alive = false;
-                       }
-                     */
+					placeIfExpectPlacing();
 
 					/**
 					 * Handle various message types here at bottom of loop.
@@ -886,8 +647,7 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 						case SOCMessage.CHOOSEPLAYERREQUEST:
 						{
 							final SOCChoosePlayerRequest msg = (SOCChoosePlayerRequest) mes;
-							final int choicePl = robberStrategy.chooseRobberVictim
-									(msg.getChoices(), msg.canChooseNone());
+							final int choicePl = thiefVictim;
 							counter = 0;
 							client.choosePlayer(game, choicePl);
 						}
@@ -1138,20 +898,10 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 	////////////////////////////////////////////////////////////////////////////
 
 	protected void play() {
-		utils.newState(utils.encodePossibleActions(game, getOurPlayerData()));
+		utils.newState();
+		utils.turnActions();
 
-		boolean[] possibleActions = utils.getActions();
-		int actionId = chooseAction(possibleActions);
-		if(!possibleActions[actionId]) {
-			System.out.print("ERROR, picked action " + actionId +" that isn't legal, replaced by action 0 (pass turn)");
-			actionId = 0;
-		}
-
-		SOCAction action = new SOCAction(utils.format, game.getBoard(), actionId);
-
-		if(action.type == SOCAction.PASS) {
-			return;
-		}
+		SOCAction action = chooseAction();
 
 		execute(action);
 	}
@@ -1160,27 +910,68 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		utils.endState();
 	}
 
-	protected abstract int chooseAction(boolean[] possibleActions);
+	protected abstract int pickAction();
+
+	public SOCAction chooseAction() {
+		int actionId = pickAction();
+		if(!utils.action_choices[actionId]) {
+			int k = 0;
+			while(!utils.action_choices[k]) {
+				k++;
+			}
+			System.out.print("ERROR, picked action " + actionId +" that isn't legal, replaced by first valid action (" + k + ")");
+			actionId = k;
+		}
+
+		return new SOCAction(utils.format, ourPlayerData, actionId);
+	}
 
 	protected abstract boolean playKightBeforeDie();
 		
 	protected void execute(SOCAction action) {
 		switch(action.type) {
-		case(SOCAction.BUILD_ROAD):
-			buildRoad(action.parameters[0]);
-			return;
-		case(SOCAction.BUILD_SETTLEMENT):
-			buildSettelement(action.parameters[0]);
-			return;
-		case(SOCAction.BUILD_CITY):
-			buildCity(action.parameters[0]);
-			return;
-		case(SOCAction.BUY_DEVELOPMENT_CARD):
-			buyDevCard();
-			return;
-		case(SOCAction.BANK_TRADE):
-			tradeBank(action.parameters[0], action.parameters[1]);
-			return;
+			case SOCAction.BUILD_ROAD:
+				play_buildRoad(action.parameters[0]);
+				return;
+			case SOCAction.BUILD_SETTLEMENT:
+				play_buildSettelement(action.parameters[0]);
+				return;
+			case SOCAction.BUILD_CITY:
+				play_buildCity(action.parameters[0]);
+				return;
+
+			case SOCAction.ROLL:
+				play_roll();
+				return;
+			case SOCAction.PASS:
+				play_pass();
+				return;
+			case SOCAction.MOVE_THIEF:
+				play_moveThief(action.parameters[0], action.parameters[1]);
+				return;
+
+			case SOCAction.BUY_DEVELOPMENT_CARD:
+				play_buyDevCard();
+				return;
+			case SOCAction.USE_KNIGHT:
+				play_useKnight();
+				return;
+			case SOCAction.USE_ROAD_BUILDING:
+				play_useRoadBuilding();
+				return;
+			case SOCAction.USE_YEAR_OF_PLENTY:
+				play_useYearOfPlenty();
+				return;
+			case SOCAction.PICK_FREE_RESOURCE:
+				play_pickFreeResource(action.parameters[0]);
+				return;
+			case SOCAction.USE_MONOPOLE:
+				play_useMonopoly(action.parameters[0]);
+				return;
+			case SOCAction.BANK_TRADE:
+				play_tradeBank(action.parameters[0], action.parameters[1]);
+				return;
+			default:
 		}
 	}
 	
@@ -1190,35 +981,53 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		client.buildRequest(game, whatWeWantToBuild.getType());
 	}
 	
-	protected void buildCity(int position) {
+	protected void play_buildCity(int position) {
 		whatWeWantToBuild = new SOCCity(ourPlayerData, position, game.getBoard());
 		
 		expectPLACING_CITY = true;
 		buildPiece();
 	}
 	
-	protected void buildSettelement(int position) {
+	protected void play_buildSettelement(int position) {
 		whatWeWantToBuild = new SOCSettlement(ourPlayerData, position, game.getBoard());
 
 		expectPLACING_SETTLEMENT = true;
 		buildPiece();
 	}
 	
-	protected void buildRoad(int position) {
+	protected void play_buildRoad(int position) {
 		whatWeWantToBuild = new SOCRoad(ourPlayerData, position, game.getBoard());
 
 		expectPLACING_ROAD = true;
 		buildPiece();
 	}
-	
-	protected void buyDevCard() {
+
+	protected void play_roll() {
+		expectDICERESULT = true;
+		counter = 0;
+		client.rollDice(game);
+	}
+
+	protected void play_pass() {
+		resetFieldsAtEndTurn();
+		client.endTurn(game);
+	}
+
+	protected int thiefVictim = 0;
+
+	protected void play_moveThief(int position, int victim) {
+		client.moveRobber(game, ourPlayerData, position);
+		thiefVictim = victim;
+	}
+
+	protected void play_buyDevCard() {
 		client.buyDevCard(game);
 
 		waitingForDevCard = true;
 		actionMsg("Buying DevCard");
 	}
 
-	protected void tradeBank(int give, int want) {
+	protected void play_tradeBank(int give, int want) {
 		SOCResourceSet giveSet = new SOCResourceSet();
 		int needed = 4;
 		if (ourPlayerData.getPortFlag(give)) {
@@ -1229,12 +1038,62 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		giveSet.add(needed, give);
 		SOCResourceSet wantSet = new SOCResourceSet();
 		wantSet.add(1, want);
-		tradeBank(giveSet, wantSet);
+		play_tradeBank(giveSet, wantSet);
 	}
 
-	protected void tradeBank(SOCResourceSet give, SOCResourceSet want) {
+	protected void play_tradeBank(SOCResourceSet give, SOCResourceSet want) {
 		client.bankTrade(game, give, want);
 		actionMsg("BankTrade", resourceString(give) + " ---> " + resourceString(want));
 		waitingForTradeMsg = true;
+	}
+
+	protected void play_useKnight() {
+		expectPLACING_ROBBER = true;
+		waitingForGameState = true;
+		counter = 0;
+		client.playDevCard(game, SOCDevCardConstants.KNIGHT);
+	}
+
+	protected void play_useRoadBuilding() {
+		expectPLACING_FREE_ROAD1 = true;
+		waitingForGameState = true;
+		counter = 0;
+		client.playDevCard(game, SOCDevCardConstants.ROADS);
+	}
+
+	protected void play_useYearOfPlenty() {
+		expectWAITING_FOR_DISCOVERY = true;
+		waitingForGameState = true;
+		counter = 0;
+		client.playDevCard(game, SOCDevCardConstants.DISC);
+	}
+
+	protected void play_pickFreeResource(int res) {
+		// HACK: Choose other resource right away
+		utils.secondFreeResource();
+		SOCAction secondResource = chooseAction();
+		int otherRes = 1;
+		if(secondResource.type == SOCAction.PICK_FREE_RESOURCE) {
+			otherRes = secondResource.parameters[0];
+		} else {
+			System.out.println("[ERROR] Couldn't pick second resource "+secondResource);
+		}
+		resourceChoices = new SOCResourceSet();
+		resourceChoices.add(1, res);
+		resourceChoices.add(1, otherRes);
+		waitingForGameState = true;
+		expectPLAY1 = true;
+		counter = 0;
+		client.pickResources(game, resourceChoices);
+	}
+
+	private int monopolyChoice = 0;
+
+	protected void play_useMonopoly(int res) {
+		expectWAITING_FOR_MONOPOLY = true;
+		waitingForGameState = true;
+		counter = 0;
+		client.playDevCard(game, SOCDevCardConstants.MONO);
+		monopolyChoice = res;
 	}
 }

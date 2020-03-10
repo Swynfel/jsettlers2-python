@@ -44,33 +44,7 @@ import soc.game.SOCShip;
 import soc.game.SOCSpecialItem;
 import soc.game.SOCTradeOffer;
 
-import soc.message.SOCAcceptOffer;
-import soc.message.SOCBankTrade;
-import soc.message.SOCCancelBuildRequest;
-import soc.message.SOCChoosePlayer;
-import soc.message.SOCChoosePlayerRequest;
-import soc.message.SOCClearOffer;
-import soc.message.SOCDevCardAction;
-import soc.message.SOCDiceResult;
-import soc.message.SOCDiscardRequest;
-import soc.message.SOCGameState;
-import soc.message.SOCInventoryItemAction;
-import soc.message.SOCMakeOffer;
-import soc.message.SOCMessage;
-import soc.message.SOCMovePiece;
-import soc.message.SOCMoveRobber;
-import soc.message.SOCPlayerElement;
-import soc.message.SOCPlayerElements;
-import soc.message.SOCPutPiece;
-import soc.message.SOCRejectOffer;
-import soc.message.SOCResourceCount;
-import soc.message.SOCSetSpecialItem;
-import soc.message.SOCSimpleAction;
-import soc.message.SOCSimpleRequest;
-import soc.message.SOCSitDown;  // for javadoc
-import soc.message.SOCStartGame;
-import soc.message.SOCTimingPing;  // for javadoc
-import soc.message.SOCTurn;
+import soc.message.*;
 
 import soc.util.CappedQueue;
 import soc.util.DebugRecorder;
@@ -460,12 +434,12 @@ public class SOCRobotBrain extends Thread
     /**
      * true if we're expecting the PLACING_FREE_ROAD1 state
      */
-    protected boolean expectPLACING_FREE_ROAD1;
+    public boolean expectPLACING_FREE_ROAD1;
 
     /**
      * true if we're expecting the PLACING_FREE_ROAD2 state
      */
-    protected boolean expectPLACING_FREE_ROAD2;
+    public boolean expectPLACING_FREE_ROAD2;
 
     /**
      * true if we're expecting the {@link SOCGame#PLACING_INV_ITEM PLACING_INV_ITEM} state.
@@ -529,7 +503,7 @@ public class SOCRobotBrain extends Thread
     /**
      * true if we're expecting to pick two resources
      */
-    protected boolean expectWAITING_FOR_DISCOVERY;
+    public boolean expectWAITING_FOR_DISCOVERY;
 
     /**
      * True if we're expecting to pick a monopoly.
@@ -1221,6 +1195,9 @@ public class SOCRobotBrain extends Thread
                     else
                     {
                         mesType = -1;
+                    }
+                    if (mesType == SOCMessage.BANKRESOURCES) {
+                        continue;
                     }
 
                     if (waitingForTradeMsg && (counter > 10))

@@ -70,12 +70,12 @@ public class PythonRobotBrain extends SwynfelRobotBrainInterface {
 	}
 
 	@Override
-	protected int chooseAction(boolean[] possibleActions) {
+	protected int pickAction() {
 		return Integer.parseInt(
 				ask("play",
-						stateToString(utils.getState()) + ";"
-								+ actionsToString(possibleActions) + ";"
-								+ ourPlayerData.getTotalVP()));
+						intArray(utils.board_state) + ";"
+								+ intArray(utils.flat_state) + ";"
+								+ boolArray(utils.action_choices)));
 	}
 
 	@Override
@@ -86,24 +86,58 @@ public class PythonRobotBrain extends SwynfelRobotBrainInterface {
 	@Override
 	protected void finished() {
 		super.finished();
-		ask("finish",stateToString(utils.getState()) + ";" + ourPlayerData.getTotalVP());
+		ask("finish", "" + ourPlayerData.getTotalVP());
 	}
 
-	public static String stateToString(int[] state) {
+	public static String intArray(int[][][] array3) {
 		StringBuilder result = new StringBuilder();
 		boolean first = true;
-		for(int b : state){
+		for(int[][] array2 : array3){
 			if(first){
+				result.append('[');
 				first = false;
 			} else {
 				result.append(',');
 			}
-			result.append(b);
+			result.append(intArray(array2));
 		}
+		result.append(']');
 		return result.toString();
 	}
 
-	public static String actionsToString(boolean[] actions) {
+	public static String intArray(int[][] array2) {
+		StringBuilder result = new StringBuilder();
+		boolean first = true;
+		for(int[] array : array2){
+			if(first){
+				result.append('[');
+				first = false;
+			} else {
+				result.append(',');
+			}
+			result.append(intArray(array));
+		}
+		result.append(']');
+		return result.toString();
+	}
+
+	public static String intArray(int[] array) {
+		StringBuilder result = new StringBuilder();
+		boolean first = true;
+		for(int value : array){
+			if(first){
+				result.append('[');
+				first = false;
+			} else {
+				result.append(',');
+			}
+			result.append(value);
+		}
+		result.append(']');
+		return result.toString();
+	}
+
+	public static String boolArray(boolean[] actions) {
 		StringBuilder result = new StringBuilder();
 		for(boolean b : actions){
 			result.append(b ? 'T' : 'F');
