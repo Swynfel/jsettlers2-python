@@ -42,7 +42,7 @@ public class Format {
     public int height = 2 * half_height + 1;
     public int half_width = 12;
     public int width = 2 * half_width + 1;
-    public int players = 2;
+    public int players;
 
     public static final String HEADER = "state.";
 
@@ -91,6 +91,7 @@ public class Format {
         xMyPieces = client.getBoolProp(HEADER + EXTRA + OPT_EXTRA_MY_PIECES, xMyPieces);
         xWhoLongestRoad = client.getBoolProp(HEADER + EXTRA + OPT_EXTRA_WHO_LR, xWhoLongestRoad);
         xWhoLargestArmy = client.getBoolProp(HEADER + EXTRA + OPT_EXTRA_WHO_LA, xWhoLargestArmy);
+        players = client.getIntProp("players", 2);
 
         faceCount = faces.length;
         edgeCount = edges.length;

@@ -45,7 +45,7 @@ public class D
      */
     public static final boolean ebugIsEnabled()
     {
-        return false;
+        return ebugOn;
     }
 
    /**

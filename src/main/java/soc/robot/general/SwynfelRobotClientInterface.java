@@ -1,5 +1,7 @@
 package soc.robot.general;
 import soc.baseclient.ServerConnectInfo;
+import soc.message.SOCGameServerText;
+import soc.message.SOCMessage;
 import soc.robot.SOCRobotClient;
 import soc.robot.general.Format;
 
@@ -62,5 +64,16 @@ public class SwynfelRobotClientInterface extends SOCRobotClient {
 		} catch (NumberFormatException e) {
 			return def;
 		}
+	}
+
+	@Override
+	public void treat(SOCMessage mes) {
+    	if (mes instanceof SOCGameServerText) {
+			String message = ((SOCGameServerText) mes).toString();
+			if(!message.contains("stole")) {
+				System.out.println("[ERROR] "+message);
+			}
+		}
+    	super.treat(mes);
 	}
 }

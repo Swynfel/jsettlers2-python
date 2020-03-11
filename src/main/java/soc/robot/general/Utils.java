@@ -143,11 +143,6 @@ public class Utils {
 		newState();
 	}
 
-	// HACK
-	public void secondFreeResource() {
-		flat_state[flat_state.length - 1] = 1;
-	}
-
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// STATE                                                                                            //
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -411,6 +406,32 @@ public class Utils {
 		}
 	}
 
+	public void prerollActions() {
+		freshActions();
+
+		int index = format.faceActions + format.edgeActions + format.vertexActions;
+
+		// # FLAT
+		// ## TurnPhase
+		action_choices[index] = true;  // RollDice
+		index ++;
+		action_choices[index] = false;  // Pass
+		index += 21;
+		// ## Development
+		action_choices[index] = false;  // BuyDevelopment
+		index ++;
+		if (!playerData.hasPlayedDevCard()) {
+			// Knight
+			action_choices[index] = game.canPlayKnight(playerData.getPlayerNumber());
+			index ++;
+			// RoadBuilding
+			action_choices[index] = (playerData.getNumPieces(SOCPlayingPiece.ROAD) >= 1) && playerData.getInventory().hasPlayable(SOCDevCardConstants.ROADS);
+			index ++;
+			// YearOfPlenty
+			action_choices[index] = playerData.getInventory().hasPlayable(SOCDevCardConstants.DISC);
+		}
+	}
+
 	public void initialSettlementActions() {
 		freshActions();
 
@@ -461,6 +482,64 @@ public class Utils {
 		}
 	}
 
+	public void roadActions() {
+		freshActions();
+
+		int index = 0;
+
+		// # BOARD
+		// ## Hexes: MoveThief
+		index += format.faceActions;
+
+		// ## Paths: BuildRoad
+		for(int road : format.edges) {
+			action_choices[index] = playerData.isPotentialRoad(road);
+			index++;
+		}
+	}
+
+	public void thiefActions() {
+		freshActions();
+
+		for(int i = 0; i < Format.HEXES.length; i++) {
+			int face = format.facesCoords[i];
+			if(face == game.getBoard().getRobberHex()) {
+				continue;
+			}
+			List<SOCPlayer> victims = game.getPlayersOnHex(face, null);
+			victims.remove(playerData);
+			if(victims.isEmpty()) {
+				action_choices[format.players * i] = true;
+			} else {
+				for(SOCPlayer victim : victims) {
+					action_choices[format.players * i + ((victim.getPlayerNumber() + format.players - playerData.getPlayerNumber()) % format.players)] = true;
+				}
+			}
+		}
+	}
+
+	public void firstFreeResource() {
+		flat_state[flat_state.length - 1] = 2;
+		freshActions();
+		int freeResourceIndex = format.faceActions + format.edgeActions + format.vertexActions + 2 + 20 + 4;
+		for(int i = 0; i < 5; i++) {
+			action_choices[freeResourceIndex + i] = true;
+		}
+	}
+
+	// HACK
+	public void secondFreeResource(int firstRes) {
+		// Pretends the first action was played
+		flat_state[rustResource(firstRes)] += 1;
+		int bank_res_index = 19 + 8 * format.players + rustResource(firstRes);
+		flat_state[bank_res_index] = Integer.max(0, flat_state[bank_res_index] - 1);
+		flat_state[flat_state.length - 1] = 1;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////
+	// UTIL                                                                                             //
+	//////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	public static class SOCAction {
 		public static final int BUILD_ROAD = 1; // =SOCPlayingPiece.ROAD;
 		public static final int BUILD_SETTLEMENT = 2; // =SOCPlayingPiece.SETTLEMENT;
@@ -489,7 +568,7 @@ public class Utils {
 			// # BOARD
 			// ## Hexes: MoveThief
 			if(index < format.faceActions) {
-				int face = format.faces[index / format.players];
+				int face = format.facesCoords[index / format.players];
 				int victim = (index + player.getPlayerNumber()) % format.players;
 				type = MOVE_THIEF;
 				parameters = new int[] { face, victim };

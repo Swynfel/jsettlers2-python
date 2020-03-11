@@ -45,6 +45,8 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 
 	protected abstract void setStrategyFields();
 
+	public boolean preRoll;
+
 	// Simple copy of SOCRobotBrain's run, with slight modifications in the middle
 	// Swynfel TODO: Add functions in original run and override those functions
 	@Override
@@ -158,6 +160,8 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 						expectWAITING_FOR_DISCOVERY = false;
 						expectWAITING_FOR_MONOPOLY = false;
 
+						preRoll = true;
+
 						//
 						// reset the selling flags and offers history
 						//
@@ -238,12 +242,7 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 						rejectedPlayInvItem = null;
 					}
 
-					/**
-					 * Handle some message types early.
-					 *
-					 * When reading the main flow of this method, skip past here;
-					 * search for "it's time to decide to build or take other normal actions".
-					 */
+
 					switch (mesType)
 					{
 						case SOCMessage.PLAYERELEMENT:
@@ -270,6 +269,7 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 							break;
 
 						case SOCMessage.DICERESULT:
+							preRoll = false;
 							game.setCurrentDice(((SOCDiceResult) mes).getResult());
 							break;
 
@@ -427,14 +427,17 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 
 					}  // switch(mesType)
 
-					if ((game.getGameState() == SOCGame.ROLL_OR_CARD) && ! waitingForGameState)
-					{
-						// TODO: Use "play-like" function
-						rollOrPlayKnightOrExpectDice();
-					}
-
 					if (!waitingForGameState) {
 						switch (game.getGameState()) {
+							case SOCGame.ROLL_OR_CARD:
+								expectROLL_OR_CARD = false;
+								if ((!waitingForOurTurn) && ourTurn && !((expectPLAY1 || expectDISCARD || expectPLACING_ROBBER || expectDICERESULT) && counter < 4000)) {
+									playPreRoll();
+								} else {
+									expectDICERESULT = true;
+								}
+								break;
+
 							case SOCGame.WAITING_FOR_ROBBER_OR_PIRATE:
 								if (ourTurn) {
 									expectPLACING_ROBBER = true;
@@ -447,13 +450,12 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 							case SOCGame.PLACING_ROBBER:
 								expectPLACING_ROBBER = false;
 								if ((!waitingForOurTurn) && ourTurn && !((expectROLL_OR_CARD || expectPLAY1) && (counter < 4000))) {
+									waitingForGameState = true;
 									if (moveRobberOnSeven) {
 										// robber moved because 7 rolled on dice
 										moveRobberOnSeven = false;
-										waitingForGameState = true;
 										expectPLAY1 = true;
 									} else {
-										waitingForGameState = true;
 
 										if (oldGameState == SOCGame.ROLL_OR_CARD) {
 											// robber moved from playing knight card before dice roll
@@ -471,22 +473,41 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 							case SOCGame.WAITING_FOR_DISCOVERY:
 								expectWAITING_FOR_DISCOVERY = false;
 								if ((!waitingForOurTurn) && ourTurn && !(expectPLAY1) && (counter < 4000)) {
-									waitingForGameState = true;
-									expectPLAY1 = true;
-									counter = 0;
-									client.pickResources(game, resourceChoices);
-									pause(1500);
+									playFreeResources();
 								}
 								break;
 							case SOCGame.WAITING_FOR_MONOPOLY:
 								expectWAITING_FOR_MONOPOLY = false;
 								if ((! waitingForOurTurn) && ourTurn && !(expectPLAY1) && (counter < 4000)) {
 									waitingForGameState = true;
-									expectPLAY1 = true;
+									if(preRoll) {
+										expectROLL_OR_CARD = true;
+									} else {
+										expectPLAY1 = true;
+									}
 									counter = 0;
 									client.pickResourceType(game, monopolyChoice);
+									actionMsg("Monopole", ""+monopolyChoice);
 									pause(1500);
 								}
+							case SOCGame.PLACING_FREE_ROAD1:
+								expectPLACING_FREE_ROAD1 = false;
+								if((!waitingForOurTurn && ourTurn && !(expectPLAY1) && counter < 4000)) {
+									playRoadBuilding();
+									expectPLACING_FREE_ROAD2 = true;
+								}
+								break;
+							case SOCGame.PLACING_FREE_ROAD2:
+								expectPLACING_FREE_ROAD2 = false;
+								if((!waitingForOurTurn && ourTurn && !(expectPLAY1) && counter < 4000)) {
+									playRoadBuilding();
+									if(preRoll) {
+										expectROLL_OR_CARD = true;
+									} else {
+										expectPLAY1 = true;
+									}
+								}
+								break;
 						}
 					}
 
@@ -647,9 +668,9 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 						case SOCMessage.CHOOSEPLAYERREQUEST:
 						{
 							final SOCChoosePlayerRequest msg = (SOCChoosePlayerRequest) mes;
-							final int choicePl = thiefVictim;
 							counter = 0;
-							client.choosePlayer(game, choicePl);
+							client.choosePlayer(game, thiefVictim);
+							actionMsg("Thief choose victim", ""+thiefVictim);
 						}
 						break;
 
@@ -763,25 +784,6 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		clean();
 	}
 
-	// Variant of SOCRobotBrain.rollOrPlayKnightOrExpectDice
-	private void rollOrPlayKnightOrExpectDice() {
-		expectROLL_OR_CARD = false;
-
-		if ((!waitingForOurTurn) && ourTurn) {
-			if (!expectPLAY1 && !expectDISCARD && !expectPLACING_ROBBER && !(expectDICERESULT && (counter < 4000))) {
-				if (playKightBeforeDie()) {
-					playKnightCard();  // sets expectPLACING_ROBBER, waitingForGameState
-				} else {
-					expectDICERESULT = true;
-					counter = 0;
-					client.rollDice(game);
-				}
-			}
-		} else {
-			expectDICERESULT = true;
-		}
-	}
-
 	private static final String PROPS_FASTPAUSE = "fast";
 	private boolean fastPause = false;
 
@@ -792,17 +794,6 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		if (!fastPause) {
 			super.pause(msec);
 		}
-	}
-
-	protected void pickFreeResources(int numChoose) {
-		// Swynfel TODO: Have AI choose
-		super.pickFreeResources(numChoose);
-	}
-
-	protected boolean chooseFreeResources(final SOCResourceSet targetResources, final int numChoose,
-			final boolean clearResChoices) {
-		// Swynfel TODO: Have AI choose
-		return super.chooseFreeResources(targetResources, numChoose, clearResChoices);
 	}
 
 	//Stops and cleans the brain variables
@@ -853,7 +844,9 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 	
 	protected void print(String message, int requiredVerbose) {
 		if(verbose >= requiredVerbose) {
-			System.out.println(message);
+			String name = game.getName();
+			name = name.substring(name.length()-3);
+			System.out.println(name+" "+message);
 		}
 	}
 	
@@ -906,6 +899,66 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		execute(action);
 	}
 
+	protected void playPreRoll() {
+		utils.newState();
+		utils.prerollActions();
+
+		SOCAction action = chooseAction();
+
+		execute(action);
+	}
+
+	protected void playFreeResources() {
+		utils.newState();
+		utils.firstFreeResource();
+		SOCAction firstResource = chooseAction();
+		int firstRes = firstResource.parameters[0];
+		utils.secondFreeResource(firstRes);
+		SOCAction secondResource = chooseAction();
+		int secondRes = firstResource.parameters[0];
+		resourceChoices = new SOCResourceSet();
+		resourceChoices.add(1, firstRes);
+		resourceChoices.add(1, secondRes);
+		waitingForGameState = true;
+		if(preRoll) {
+			expectROLL_OR_CARD = true;
+		} else {
+			expectPLAY1 = true;
+		}
+		counter = 0;
+		client.pickResources(game, resourceChoices);
+
+		actionMsg("Free Resource", resourceChoices.toString());
+	}
+
+	protected void playRoadBuilding() {
+		utils.newState();
+		utils.roadActions();
+
+		SOCAction action = chooseAction();
+
+		whatWeWantToBuild = new SOCRoad(ourPlayerData, action.parameters[0], game.getBoard());
+
+		waitingForGameState = true;
+		counter = 0;
+
+		pause(500);
+		client.putPiece(game, whatWeWantToBuild);
+		pause(1000);
+
+		actionMsg("Road Building", whatWeWantToBuild.toString());
+	}
+
+	@Override
+	protected void moveRobber()
+	{
+		utils.newState();
+		utils.thiefActions();
+
+		SOCAction action = chooseAction();
+		play_moveThief(action.parameters[0], action.parameters[1]);
+	}
+
 	protected void finished() {
 		utils.endState();
 	}
@@ -925,8 +978,6 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 
 		return new SOCAction(utils.format, ourPlayerData, actionId);
 	}
-
-	protected abstract boolean playKightBeforeDie();
 		
 	protected void execute(SOCAction action) {
 		switch(action.type) {
@@ -1006,11 +1057,15 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		expectDICERESULT = true;
 		counter = 0;
 		client.rollDice(game);
+
+		actionMsg("Rolling Dice");
 	}
 
 	protected void play_pass() {
 		resetFieldsAtEndTurn();
 		client.endTurn(game);
+
+		actionMsg("Passing Turn");
 	}
 
 	protected int thiefVictim = 0;
@@ -1018,13 +1073,15 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 	protected void play_moveThief(int position, int victim) {
 		client.moveRobber(game, ourPlayerData, position);
 		thiefVictim = victim;
+
+		actionMsg("Moving Thief", game.getBoard().getRobberHex() + " ---> " + position  + " (" +victim+")");
 	}
 
 	protected void play_buyDevCard() {
 		client.buyDevCard(game);
 
 		waitingForDevCard = true;
-		actionMsg("Buying DevCard");
+		actionMsg("Buying Development Card");
 	}
 
 	protected void play_tradeBank(int give, int want) {
@@ -1052,6 +1109,8 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		waitingForGameState = true;
 		counter = 0;
 		client.playDevCard(game, SOCDevCardConstants.KNIGHT);
+
+		actionMsg("DVP Knight");
 	}
 
 	protected void play_useRoadBuilding() {
@@ -1059,6 +1118,8 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		waitingForGameState = true;
 		counter = 0;
 		client.playDevCard(game, SOCDevCardConstants.ROADS);
+
+		actionMsg("DVP Road Building");
 	}
 
 	protected void play_useYearOfPlenty() {
@@ -1066,10 +1127,14 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		waitingForGameState = true;
 		counter = 0;
 		client.playDevCard(game, SOCDevCardConstants.DISC);
+
+		actionMsg("DVP Year of Plenty");
 	}
 
 	protected void play_pickFreeResource(int res) {
-		// HACK: Choose other resource right away
+		System.out.println("[ERROR] Shouldn't pick free resources from inside play");
+		return;
+		/*
 		utils.secondFreeResource();
 		SOCAction secondResource = chooseAction();
 		int otherRes = 1;
@@ -1085,6 +1150,7 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		expectPLAY1 = true;
 		counter = 0;
 		client.pickResources(game, resourceChoices);
+		 */
 	}
 
 	private int monopolyChoice = 0;
@@ -1095,5 +1161,7 @@ public abstract class SwynfelRobotBrainInterface extends SOCRobotBrain {
 		counter = 0;
 		client.playDevCard(game, SOCDevCardConstants.MONO);
 		monopolyChoice = res;
+
+		actionMsg("DVP Monopoly");
 	}
 }

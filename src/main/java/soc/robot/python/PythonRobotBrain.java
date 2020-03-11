@@ -58,9 +58,9 @@ public class PythonRobotBrain extends SwynfelRobotBrainInterface {
 		decisionMaker = new VoidRobotDM(this);
 		negotiator = new VoidRobotNegotiator(this);
 		discardStrategy = new RandomDiscardStrategy(game, ourPlayerData, this, rand);
-		monopolyStrategy = new VoidMonopolyStrategy(game, ourPlayerData);
+		monopolyStrategy = null;
 		openingBuildStrategy = new PythonOpeningBuildStrategy(game, ourPlayerData, this, utils);
-		robberStrategy = new RandomRobberStrategy(game, ourPlayerData, this, rand);
+		robberStrategy = null;
 	}
 
 	@Override
@@ -76,11 +76,6 @@ public class PythonRobotBrain extends SwynfelRobotBrainInterface {
 						intArray(utils.board_state) + ";"
 								+ intArray(utils.flat_state) + ";"
 								+ boolArray(utils.action_choices)));
-	}
-
-	@Override
-	protected boolean playKightBeforeDie() {
-		return false;
 	}
 
 	@Override
