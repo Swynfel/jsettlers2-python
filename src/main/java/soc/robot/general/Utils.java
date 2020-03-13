@@ -56,14 +56,14 @@ public class Utils {
 				return 1;
 			case ORE:
 				return 2;
-			case SHEEP:
-				return 3;
 			case WHEAT:
+				return 3;
+			case SHEEP:
 				return 4;
 		}
 		return 5;
 	}
-	public static int[] jsettlersResource = new int[] { CLAY, WOOD, ORE, SHEEP, WHEAT };
+	public static int[] jsettlersResource = new int[] { CLAY, WOOD, ORE, WHEAT, SHEEP };
 
 
 	public int jsettlersHarbor(int rustHarbor) {
@@ -278,15 +278,12 @@ public class Utils {
 			if(in_bank > 19) {
 				System.out.println("[ERROR] bank has " + in_bank + " resources of type " + r + " which is more than 19, the maximum");
 			}
-			if(in_bank <= 0) {
-				System.out.println("[REALLY?] bank has " + in_bank + " resources of type " + r + " which is strange");
-			}
 		}
 		flat_state[c_state+5] = game.getNumDevCards();
 
 		// --- phase --- //
 		int c_phase = c_state + 6;
-		flat_state[c_phase] = (game.getGameState() == SOCGame.ROLL_OR_CARD) ? 1 : 0;
+		flat_state[c_phase] = (brain.preRoll) ? 1 : 0;
 		flat_state[c_phase+1] = playerData.hasPlayedDevCard() ? 0 : 1;
 		flat_state[c_phase+2] = brain.expectPLACING_FREE_ROAD1 ? 2 : brain.expectPLACING_FREE_ROAD2 ? 1 : 0;
 		flat_state[c_phase+3] = brain.expectWAITING_FOR_DISCOVERY ? 2 : 0;
