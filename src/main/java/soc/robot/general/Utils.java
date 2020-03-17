@@ -65,6 +65,10 @@ public class Utils {
 	}
 	public static int[] jsettlersResource = new int[] { CLAY, WOOD, ORE, WHEAT, SHEEP };
 
+	public static SOCResourceSet jsettlersResources(int b, int l, int o, int g, int w) {
+		return new SOCResourceSet(b, o, w, g, l,0);
+	}
+
 
 	public int jsettlersHarbor(int rustHarbor) {
 		switch (rustHarbor) {
@@ -115,12 +119,6 @@ public class Utils {
 		for(int res = 0; res < 5; res++) {
 			bank_resources[res] =  msg.rs.getAmount(jsettlersResource[res]);
 		}
-		/*System.out.println("[BANK RESOURCES] "
-				+bank_resources[0]+" "
-				+bank_resources[1]+" "
-				+bank_resources[2]+" "
-				+bank_resources[3]+" "
-				+bank_resources[4]+" from "+msg);*/
 	}
 	
 	public void newState() {
@@ -495,6 +493,26 @@ public class Utils {
 		}
 	}
 
+	public void discardActions() {
+		freshActions();
+
+		int index = 37 + 8 * (format.players-1);
+
+		SOCResourceSet resources = playerData.getResources();
+
+		for(int b=0; b<5; b++) {
+			for(int l=0; b+l<5; b++) {
+				for(int o=0; b+l+o<5; b++) {
+					for(int g=0; b+l+o+g<5; b++) {
+						int w = 4-(b+l+o+g);
+						action_choices[index] = true;
+						index ++;
+					}
+				}
+			}
+		}
+	}
+
 	public void thiefActions() {
 		freshActions();
 
@@ -544,7 +562,8 @@ public class Utils {
 
 		public static final int ROLL = 10;
 		public static final int PASS = 11;
-		public static final int MOVE_THIEF = 12;
+		public static final int KEEP = 12;
+		public static final int MOVE_THIEF = 13;
 
 		public static final int BUY_DEVELOPMENT_CARD = 20;
 		public static final int USE_KNIGHT = 21;
@@ -645,9 +664,27 @@ public class Utils {
 				return;
 			}
 			index -= 5;
-			assert(index < 5);
-			type = USE_MONOPOLE;
-			parameters = new int[] { jsettlersResource[index] };
+			if(index < 5) {
+				type = USE_MONOPOLE;
+				parameters = new int[] { jsettlersResource[index] };
+			}
+			index -= 5;
+			assert(index < 70);
+			type = KEEP;
+			for(int b=0; b<5; b++) {
+				for(int l=0; b+l<5; b++) {
+					for(int o=0; b+l+o<5; b++) {
+						for(int g=0; b+l+o+g<5; b++) {
+							int w=4-(b+l+o+g);
+							if (index == 0) {
+								parameters = new int[] {b, l, o, g, w};
+								return;
+							}
+							index --;
+						}
+					}
+				}
+			}
 		}
 	}
 }

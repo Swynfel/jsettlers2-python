@@ -57,7 +57,7 @@ public class PythonRobotBrain extends SwynfelRobotBrainInterface {
 	protected void setStrategyFields() {
 		decisionMaker = new VoidRobotDM(this);
 		negotiator = new VoidRobotNegotiator(this);
-		discardStrategy = new RandomDiscardStrategy(game, ourPlayerData, this, rand);
+		discardStrategy = new PythonDiscardStrategy(game, ourPlayerData, this, utils, rand);
 		monopolyStrategy = null;
 		openingBuildStrategy = new PythonOpeningBuildStrategy(game, ourPlayerData, this, utils);
 		robberStrategy = null;
