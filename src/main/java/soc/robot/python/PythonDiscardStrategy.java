@@ -24,7 +24,6 @@ public class PythonDiscardStrategy extends DiscardStrategy {
 
     @Override
     public SOCResourceSet discard(final int numDiscards, Stack<SOCPossiblePiece> _buildingPlan) {
-
         utils.newState();
         utils.discardActions();
 
@@ -32,6 +31,7 @@ public class PythonDiscardStrategy extends DiscardStrategy {
 
         assert action.type == Utils.SOCAction.KEEP;
         assert action.parameters.length == 5;
+        System.out.println(action.toString());
 
         SOCResourceSet kept = Utils.jsettlersResources(
                 action.parameters[0],
@@ -47,12 +47,13 @@ public class PythonDiscardStrategy extends DiscardStrategy {
         for (int discardedCards = discarded.getTotal(); discardedCards > numDiscards; discardedCards--) {
             int pos = rand.nextInt(discardedCards);
             int resourceTypePicked = -1;
-            while (pos >= 0 && resourceTypePicked < 4) {
+            while (pos >= 0) {
                 resourceTypePicked++;
                 pos -= discarded.getAmount(resourceTypePicked);
             }
-            discarded.subtract(1, resourceTypePicked + 1);
+            discarded.subtract(1, resourceTypePicked);
         }
+        System.out.println(ourPlayerData.getResources().toShortString() + " (" + numDiscards + ") : " + kept.toShortString() + " " + discarded.toShortString());
         return discarded;
     }
 }

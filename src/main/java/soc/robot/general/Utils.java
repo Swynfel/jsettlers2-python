@@ -159,7 +159,7 @@ public class Utils {
 
 		// --- intersections --- //
 		for(int portType = 0; portType < 6; portType++) {
-			List<Integer> portVertices = board.getPortCoordinates(0);
+			List<Integer> portVertices = board.getPortCoordinates(portType);
 			int value = rustResource(portType);
 			for (int vertex : portVertices) {
 				int index = 0;
@@ -236,7 +236,7 @@ public class Utils {
 		int[] resources = playerData.getResources().getAmounts(false);
 		SOCInventory inventory = playerData.getInventory();
 		for(int r = 0; r < 5; r++) {
-			flat_state[rustResource(r)] = resources[r];
+			flat_state[rustResource(r + 1)] = resources[r];
 		}
 		flat_state[5] = playerData.getNumPieces(SOCPlayingPiece.ROAD);
 		flat_state[6] = playerData.getNumPieces(SOCPlayingPiece.SETTLEMENT);
@@ -246,7 +246,7 @@ public class Utils {
 			flat_state[9+d] = getNumCardsFromInventory(inventory, SOCInventory.OLD, d);
 		}
 		for(int d = 0; d < 5; d++) {
-			flat_state[14+d] = inventory.getAmount(SOCInventory.NEW, d);
+			flat_state[14+d] = getNumCardsFromInventory(inventory, SOCInventory.NEW, d);
 		}
 		for(int h = 0; h < 6; h++) {
 			flat_state[19+h] = playerData.getPortFlag(jsettlersHarbor(h)) ? 1 : 0;
@@ -496,16 +496,17 @@ public class Utils {
 	public void discardActions() {
 		freshActions();
 
-		int index = 37 + 8 * (format.players-1);
+		int index = format.totalActions - 70;
 
 		SOCResourceSet resources = playerData.getResources();
 
 		for(int b=0; b<5; b++) {
-			for(int l=0; b+l<5; b++) {
-				for(int o=0; b+l+o<5; b++) {
-					for(int g=0; b+l+o+g<5; b++) {
+			for(int l=0; b+l<5; l++) {
+				for(int o=0; b+l+o<5; o++) {
+					for(int g=0; b+l+o+g<5; g++) {
 						int w = 4-(b+l+o+g);
-						action_choices[index] = true;
+						boolean value = resources.contains(new int[] {b,o,w,g,l});
+						action_choices[index] = value;
 						index ++;
 					}
 				}
@@ -672,10 +673,10 @@ public class Utils {
 			assert(index < 70);
 			type = KEEP;
 			for(int b=0; b<5; b++) {
-				for(int l=0; b+l<5; b++) {
-					for(int o=0; b+l+o<5; b++) {
-						for(int g=0; b+l+o+g<5; b++) {
-							int w=4-(b+l+o+g);
+				for(int l=0; b+l<5; l++) {
+					for(int o=0; b+l+o<5; o++) {
+						for(int g=0; b+l+o+g<5; g++) {
+							int w = 4-(b+l+o+g);
 							if (index == 0) {
 								parameters = new int[] {b, l, o, g, w};
 								return;
@@ -685,6 +686,10 @@ public class Utils {
 					}
 				}
 			}
+		}
+
+		public String toString() {
+			return "<"+id+"> "+type+"-"+Arrays.toString(parameters);
 		}
 	}
 }
